@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <script src="js/jquery.min.js"></script>
+  <style>
+    .d-flex {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 4rem;
+    }
+    .kiri, .kanan {
+      width: 100%;
+      text-align: center;
+      flex: 1 0 0%;
+      padding: 0 1rem;
+    }
+    .tengah {
+      flex: 0 0 auto;
+      width: 40%;
+      margin-top: 5rem;
+      margin-right: 10rem;
+    }
+    textarea {
+      width: 95%;
+    }
+    .btn {
+      padding: 8px 15px;
+      cursor: pointer;
+      margin-top: .7rem;
+      margin-bottom: 1rem;
+    }
+    .btn.blue {
+      border: 2px solid cornflowerblue;
+      background: cornflowerblue;
+      color: white;
+      font-weight: 600;
+      border-radius: 4px;
+    }
+    .btn.red {
+      background: #ca4646;
+      color: white;
+      font-weight: 500;
+      text-transform: uppercase;
+      border: 0;
+      border-radius: 5px;
+      padding: 12px 20px;
+      line-height: 1;
+    }
+    .btn:hover {
+      filter: grayscale(20%);
+      transition: .15s;
+    }
+    .me-2 {
+      margin-right: .5rem;
+    }
+    .mb-2 {
+      margin-bottom: .5rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="d-flex">
+    <div class="kiri">
+      <textarea name="sebelum" id="sebelum" rows="30"></textarea>
+    </div>
+    <div class="tengah">
+      <div class="submit-url mb-2">
+        <form action="#!" method="get">
+          <input type="text" id="input_url" name="input_url" placeholder="Input Url...">
+          <button id="submit_url">Submit</button>
+        </form>
+      </div>
+      <div class="save-file">
+        <b><span id="filename">filename.md</span></b>
+      </div>
+      <button class="btn me-2 blue" onclick="saveFile()">Save</button>
+      <hr>
+      <button class="btn red" onClick="bersih('sebelum')">Clear</button>
+      <div id="custom-multiple-grab" style="padding: 10px;background: #33506c1c;display: flex;align-items: center;flex-wrap: wrap;">
+        <span style="flex: 0 0 auto;width: 100%;font-size: 13px;text-transform: uppercase;margin-bottom: 10px;">custom multiple grab</span>
+        <form action="#custom" method="get">
+          <input type="text" style="width: 250px;" id="raw_link" placeholder="link (raw)..">
+          <input type="text" style="width: 50px;padding: 5px;" id="start_link" placeholder="start"> to 
+          <input type="text" style="width: 50px;padding: 5px;" id="stop_link" placeholder="stop">
+        </form>
+        <button onclick="grab()" class="btn me-2 blue" style="margin:0;margin-left: auto;">Mulai</button>
+      </div>
+    </div>
+  </div>
+
+
+  <script>
+    
+    let $ = jQuery;
+    $('#submit_url').click(function(){
+      let url = $('#input_url').val();
+        $('#input_url').val('Processing').attr("disabled", 'disabled');
+        fetch('https://api.kdevz.net/manga/kiryuu/?url=' + url )
+            .then(res => res.json())
+            .then(res => {
+              let date, tgl, bulan, jam, menit, detik, waktu;
+              date  = new Date();
+              bulan = (date.getMonth().toString().length == 1) ? "0" + (date.getMonth()+1) : (date.getMonth()+1);
+              tgl   = (date.getDate().toString().length == 1) ? "0" + date.getDate() : date.getDate();
+              jam   = (date.getHours().toString().length == 1) ? "0" + date.getHours() : date.getHours();
+              menit = (date.getMinutes().toString().length == 1) ? "0" + date.getMinutes() : date.getMinutes();
+              detik = (date.getSeconds().toString().length == 1) ? "0" + date.getSeconds() : date.getSeconds();
+              waktu = date.getFullYear() +"-"+ bulan +"-"+ tgl +"T"+ jam +":"+ menit +":"+ detik + "+07:00" ;
+
+                let frontMatter = `--- \ntitle: "Chapter ${res.chapter} Bahasa Indonesia" \ndate: ${waktu}  \nseries: "${res.series}" \nchapter: "${res.chapter}" \n---\n\n\n`;
+                let gambarUrl = res.imgurl.replace(/\[|\]|\\|\"/g, "").split(",");
+                let output = "";
+                $(gambarUrl).each((index, element) => {
+                  output += `![gambar ${index+1}](${element})\n`;
+                });
+                // output
+                $('#filename').text("Ch-" + res.chapter + ".md");
+                $('#sebelum').val(frontMatter + output);
+            })
+            .then(succ => {
+                $('#input_url').val('').removeAttr("disabled", 'disabled');
+                $('#save_file').ready(function(){
+                  let data, name, type;
+                  data = $('#sebelum').val();
+                  name = $('#filename').text();
+                  type = "text/plain";
+                
+                  var file = new Blob([data], {type: type});
+                    if (window.navigator.msSaveOrOpenBlob) // IE10+
+                        window.navigator.msSaveOrOpenBlob(file, name);
+                    else { // Others
+                        var a = document.createElement("a"),
+                                url = URL.createObjectURL(file);
+                        a.href = url;
+                        a.download = name;
+                        document.body.appendChild(a);
+                        a.click();
+                        setTimeout(function() {
+                            document.body.removeChild(a);
+                            window.URL.revokeObjectURL(url);  
+                        }, 0); 
+                    }
+                
+                });
+            })
+            .catch(e => console.log(e));
+    });
+
+
+
+    function grab(){
+      let start = parseInt($('#start_link').val()); 
+      let stop = parseInt($('#stop_link').val());
+      let link = $('#raw_link').val();
+      for (i=start; i<=stop; i++) {
+        let url = link + i;
+        console.log(url); 
+        // banyak ubah script tetep gagal, udah kehapus script sebelumnya
+      }
+    }
+
+    function bersih(id) {
+      document.getElementById(id).value = "";
+    }
+
+    // save file
+    function saveFile(){
+      let data, name, type;
+      data = document.getElementById('sebelum').value;
+      name = document.getElementById('filename').innerText;
+      type = "text/plain";
+
+      var file = new Blob([data], {type: type});
+        if (window.navigator.msSaveOrOpenBlob) // IE10+
+            window.navigator.msSaveOrOpenBlob(file, name);
+        else { // Others
+            var a = document.createElement("a"),
+                    url = URL.createObjectURL(file);
+            a.href = url;
+            a.download = name;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(function() {
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);  
+            }, 0); 
+        }
+
+    }
+  </script>
+</body>
+</html>
